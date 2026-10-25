@@ -5,6 +5,7 @@ const state = { temperature: 24.8, humidity: 61.2, ammonia: 8.4, readings: [] };
 const history = { temperature: [], humidity: [], ammonia: [] };
 const chartLabels = [];
 const telemetryCharts = {};
+let telemetryRows = [];
 const ESP32_TIMEOUT_MS = 2 * 60 * 1000;
 let latestEsp32ReadingAt = 0;
 let lastFarmStatus = '';
@@ -49,34 +50,6 @@ function buildTelemetryCharts() {
   definitions.forEach(([id, datasets, yMax]) => buildChart(id, datasets.map((dataset) => ({ ...dataset, tension: .42, borderWidth: 2, pointRadius: 0 })), yMax));
 }
 
-function normalizeFarmStatus(status) {
-  if (status === undefined || status === null || status === '') return null;
-  const value = String(status).trim().toLowerCase();
-  if (value === '1' || value === 'optimal') return 'Optimal';
-  if (value === '2' || value === 'suboptimal') return 'Suboptimal';
-  if (value === '3' || value === 'dangerous' || value === 'poor' || value === 'poor_dangerous') return 'Dangerous';
-  if (value === 'danger') return 'Dangerous';
-  const exact = ['Optimal', 'Suboptimal', 'Dangerous'].find((label) => label.toLowerCase() === value);
-  return exact || null;
-}
-
-function calculateFarmStatus() {
-  const temp = state.temperature;
-  const humidity = state.humidity;
-  const ammonia = state.ammonia;
-
-  const tempDanger = temp < 15 || temp > 35;
-  const tempSuboptimal = (temp >= 15 && temp < 20) || (temp > 30 && temp <= 35);
-  const humidityDanger = humidity < 30 || humidity > 80;
-  const humiditySuboptimal = (humidity >= 30 && humidity < 50) || (humidity > 70 && humidity <= 80);
-  const ammoniaDanger = ammonia > 25;
-  const ammoniaSuboptimal = ammonia >= 10 && ammonia <= 25;
-
-  if (tempDanger || humidityDanger || ammoniaDanger) return 'Dangerous';
-  if (tempSuboptimal || humiditySuboptimal || ammoniaSuboptimal) return 'Suboptimal';
-  return 'Optimal';
-}
-
 function updateSensor(id, value) {
   $(`#${id}Value`).textContent = value.toFixed(1);
   const stateElement = $(`#${id}State`);
@@ -112,9 +85,6 @@ function applyReading(data, timestamp = new Date()) {
   const now = timestampValue(timestamp);
   $('#currentDate').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   $('#currentTime').textContent = formatTime(now); $('#checkedTime').textContent = formatTime(now);
-  history.temperature.push(state.temperature); history.humidity.push(state.humidity); history.ammonia.push(state.ammonia); chartLabels.push(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  Object.values(history).forEach((series) => { while (series.length > 12) series.shift(); }); while (chartLabels.length > 12) chartLabels.shift();
-  Object.values(telemetryCharts).forEach((chart) => { chart.data.labels = chartLabels; chart.update('none'); });
 }
 
 function showToast(message) { const toast = $('#toast'); toast.textContent = message; toast.classList.add('show'); window.clearTimeout(showToast.timeout); showToast.timeout = window.setTimeout(() => toast.classList.remove('show'), 2400); }
@@ -137,7 +107,7 @@ async function subscribeToFirebase() {
           seenReadings.add(payloadKey);
           return true;
         });
-      state.readings = rows.slice(0, 8).map((row) => ({ timestamp: formatTime(timestampValue(row.timestamp)), temperature: numeric(row.temperature, state.temperature), humidity: numeric(row.humidity, state.humidity), ammonia: numeric(row.ammonia, state.ammonia), ai: normalizeFarmStatus(row.state) || 'Unknown' }));
+      state.readings = rows.slice(0, 8).map((row) => ({ timestamp: formatTime(timestampValue(row.timestamp)), temperature: numeric(row.temperature, state.temperature), humidity: numeric(row.humidity, state.humidity), ammonia: numeric(row.ammonia, state.ammonia), ai: row.state || 'Optimal' }));
       if (current) {
         const latestTimestamp = current.timestamp ? timestampValue(current.timestamp) : null;
         latestEsp32ReadingAt = latestTimestamp?.getTime() || 0;
