@@ -19,14 +19,13 @@
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 
-#include "poultry_model_int8.h"
+#include "../Model/poultry_model_int8.h"
 
 
 // ============================================================
 // FIREBASE CONFIGURATION
 // ============================================================
 
-#define FIREBASE_API_KEY      "your api key"
 #define FIREBASE_API_KEY      PFMS_FIREBASE_API_KEY
 #define FIREBASE_DATABASE_URL PFMS_FIREBASE_DATABASE_URL
 
@@ -562,6 +561,12 @@ void runInference(
 
     FarmState predictedState =
         mapMLState(bestIndex);
+    predictedState = applySafetyThresholds(
+        predictedState,
+        temp,
+        hum,
+        nh3
+    );
 
 
     // ----------------------------
@@ -859,7 +864,7 @@ void updateActuators(
             if (
                 (hum > 70 && hum <= 80)
                 ||
-                (nh3 > 10 && nh3 < 25)
+                (nh3 >= 10 && nh3 <= 25)
             ) {
 
                 digitalWrite(
@@ -2119,4 +2124,33 @@ void loop() {
 
 
     delay(10);
+}
+
+
+FarmState applySafetyThresholds(
+    FarmState predictedState,
+    float temp,
+    float hum,
+    float nh3
+) {
+    if (
+        temp < 15 || temp > 35 ||
+        hum < 30 || hum > 80 ||
+        nh3 > 25
+    ) {
+        return POOR_DANGEROUS;
+    }
+
+    if (
+        predictedState == POOR_DANGEROUS ||
+        temp < 20 || temp > 30 ||
+        hum < 50 || hum > 70 ||
+        nh3 >= 10
+    ) {
+        return predictedState == POOR_DANGEROUS
+            ? POOR_DANGEROUS
+            : SUBOPTIMAL;
+    }
+
+    return predictedState;
 }
