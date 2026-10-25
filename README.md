@@ -1,178 +1,159 @@
 # Poultry Farm Management System (PFMS)
 
-**Version:** v2.2 
+**Version:** v3.0
 
-**Author:** Boranno Golder 
+**Author:** Boranno Golder
 
-**Board:** ESP32 S3 WROOM 
+**Board:** ESP32 S3 WROOM
 
-**Date:** 14 AUG 2025  
+**Date:** 25 OCT 2026
+
+[https://boranno.github.io/POLTRY-FARM-MANAGEMENT-SYSTEM/](https://boranno.github.io/POLTRY-FARM-MANAGEMENT-SYSTEM/)
+
+## Project overview
+
+PFMS monitors temperature, humidity, and ammonia levels inside a poultry house and uses a TinyML model to classify the farm condition as Optimal, Suboptimal, or Dangerous. The ESP32 board controls the farm actuators automatically and uploads live data to Firebase so the dashboard can show the latest readings in real time.
+
+This project is structured to be easy to clone, customize, and contribute to as a GitHub repository.
+
+## Features
+
+- DHT22 temperature and humidity monitoring
+- MQ-135 ammonia sensing
+- TinyML-based farm condition prediction
+- Firebase Realtime Database integration
+- Local LCD display output
+- Automatic control for fan, heater, ventilation, and siren
+- WiFi reconnection and Firebase retry handling
+- Offline-safe control logic when live updates are disabled
+- GitHub Pages dashboard for monitoring remotely
+
+## Repository contents
+
+- PFMS/ - Arduino firmware for the ESP32
+- Model/poultry_model_int8.h - intended location for the embedded int8 TinyML model
+- index.html, style.css, script.js - web dashboard
+- firebase-config.js - Firebase configuration for the frontend
+- diagram.json - Wokwi simulation wiring diagram
+- libraries.txt - Arduino library references
+- LICENSE - MIT license
+
+## Hardware overview
+
+| Component | Pin |
+|---|---|
+| DHT22 data pin | 5 |
+| MQ-135 analog output | 6 |
+| Live update switch | 12 |
+| Red LED | 38 |
+| Yellow LED | 39 |
+| Blue LED | 40 |
+| Firebase upload active LED | 10 |
+| Firebase upload stopped LED | 11 |
+| Fan relay | 16 |
+| Heater relay | 17 |
+| Ventilation relay | 18 |
+| Siren relay | 7 |
+
+## Farm thresholds
+
+| Parameter | Optimal | Suboptimal | Dangerous |
+|---|---|---|---|
+| Temperature | 20–30°C | 15–20°C or 30–35°C | <15°C or >35°C |
+| Humidity | 50–70% | 30–50% or 70–80% | <30% or >80% |
+| Ammonia | <10 ppm | 10–25 ppm | >25 ppm |
+
+## TinyML model
+
+- **Model file:** `Model/poultry_model_int8.h`
+- **Format:** TensorFlow Lite for Microcontrollers, int8 quantized
+- **Input features:** temperature, humidity, and ammonia, in that order
+- **Preprocessing:** raw sensor values; the firmware currently uses a mean of 0 and scale of 1 for each feature
+- **Output classes:** index 0 = Dangerous, index 1 = Optimal, index 2 = Suboptimal
+- **Tensor arena:** 20 KB allocated by the firmware
+
+The model header in this repository is currently empty. Add the exported model byte array before building the firmware; the README does not include model training details or performance metrics because those are not present in the repository.
+
+## Firebase data format
+
+The firmware writes live data to:
+
+- /pfms/current
+- /pfms/history
+- /pfms/actuators
+
+Example current payload:
+
+```json
+{
+  "temperature": 27.1,
+  "humidity": 62.5,
+  "ammonia": 8.4,
+  "state": "Optimal",
+  "timestamp": { ".sv": "timestamp" }
+}
+```
+
+## Project setup
+
+### Prerequisites
+
+- Visual Studio Code with the PlatformIO IDE extension
+- PlatformIO ESP32 platform and board configuration for the ESP32-S3 WROOM
+- Internet access for Firebase and WiFi
+
+### Required libraries
+
+- DHT sensor library
+- LiquidCrystal I2C
+- FirebaseClient
+- WiFi
+- WiFiClientSecure
+- TensorFlow Lite for Microcontrollers
+
+### Configure credentials
+
+Edit the values in the firmware before upload:
+
+```cpp
+#define FIREBASE_API_KEY      "your api key"
+#define FIREBASE_DATABASE_URL "your database url"
+
+#define WIFI_SSID     "your wifi ssid"
+#define WIFI_PASSWORD "your wifi password"
+```
+
+## Build and upload
+
+1. Open the firmware project in Visual Studio Code with the PlatformIO IDE extension installed.
+2. Configure PlatformIO for the ESP32-S3 WROOM board and install the required libraries.
+3. Add the exported TinyML model byte array to `Model/poultry_model_int8.h`.
+4. Update Firebase and WiFi credentials in the firmware.
+5. Build and upload the firmware using PlatformIO.
+6. Turn on the live update switch when you want cloud uploads.
+
+## Website deployment
+
+This repository includes a front-end dashboard intended to be served as a static GitHub Pages site. The current live site is:
 
 https://boranno.github.io/POLTRY-FARM-MANAGEMENT-SYSTEM/
 
----
+## Contributing
 
-## 📌 Overview
+Contributions are welcome. To contribute:
 
-The **Poultry Farm Management System (PFMS)** is an IoT-enabled environmental monitoring and control system for poultry houses, built on the ESP32 microcontroller.  
-It monitors **temperature**, **humidity**, and **ammonia (NH₃)** levels, and automatically controls actuators (fan, heater, ventilation, siren) to maintain healthy conditions for poultry.
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes.
+4. Commit and push the branch.
+5. Open a pull request.
 
-PFMS features both **online mode** (with cloud dashboard & email alerts) and **offline mode** (local display & control).
+## License
 
----
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-## ✨ Key Features
+## Notes
 
-- **Environmental Monitoring**
-  - Temperature & Humidity via **DHT22**
-  - Ammonia concentration via **MQ-135**
-- **Actuator Control (Automatic)**
-  - Fan
-  - Heater
-  - Ventilation
-  - Siren
-- **Web & Mobile Dashboard**  
-  - Real-time monitoring via **Blynk IoT** (web + Android/iOS)
-- **Automated Alerts**
-  - **Email notifications** for **Suboptimal** and **Dangerous** environmental conditions
-- **Modes of Operation**
-  - **Online mode**: Live data to cloud + dashboard + alerts
-  - **Offline mode**: Full local control with live LCD updates
-- **Non-blocking, staged reconnection system** to handle unstable networks
-- **LCD User Interface**
-  - Startup scrolling animation
-  - Live sensor readings
-  - State abbreviations: `OK` (Optimal), `!!` (Suboptimal), `XX` (Dangerous)
-
----
-
-## 🛠 Hardware Requirements
-
-| Component                  | GPIO Pin |
-|----------------------------|----------|
-| **DHT22 Sensor**           | 47       |
-| **MQ-135 Analog Output**   | 4        |
-| **Live Update Button**     | 12       |
-| **Red LED**                | 38       |
-| **Yellow LED**             | 37       |
-| **Blue LED**               | 39       |
-| **Blynk Upload Active LED**| 10       |
-| **Blynk Upload Stopped LED**| 11      |
-| **Fan Relay**              | 16       |
-| **Heater Relay**           | 20       |
-| **Ventilation Relay**      | 35       |
-| **Siren Relay**            | 6        |
-
----
-
-## 🌡 Environmental Thresholds
-
-| Parameter       | Optimal Range      | Suboptimal Range        | Poor/Dangerous Range  |
-|-----------------|--------------------|-------------------------|-----------------------|
-| Temperature (°C)| 20–30              | 15–20 or 30–35          | <15 or >35            |
-| Humidity (%)    | 50–70              | 30–50 or 70–80          | <30 or >80            |
-| Ammonia (ppm)   | <10                 | 10–25                   | >25                   |
-
----
-
-## 🌐 Blynk Cloud Integration
-
-**Virtual Pin Mapping**:
-
-| Virtual Pin | Data Sent                  |
-|-------------|---------------------------|
-| `V0`        | Temperature (°C)          |
-| `V1`        | Humidity (%)               |
-| `V2`        | Ammonia (ppm)              |
-| `V3`        | State code (1, 2, 3)       |
-
----
-
-## 📩 Email Notification Logic
-
-- **Trigger:**  
-  - Suboptimal conditions (State 2) — moderate deviations from thresholds  
-  - Dangerous conditions (State 3) — extreme values risking poultry health  
-- **Alert Content:**  
-  - Current readings  
-  - Farm state name & abbreviation  
-  - Recommended corrective action  
-
-> **NOTE:** Email notifications are configured via Blynk’s Eventor / Automations or external server integration. The device sends the data and triggers the event; Blynk handles email delivery.
-
----
-
-## 🔄 Modes of Operation
-
-### **Online Mode**
-- Live cloud updates every 10 seconds
-- Email alerts for suboptimal & dangerous conditions
-- Viewable via Blynk mobile app and web dashboard
-
-### **Offline Mode**
-- No internet/cloud required
-- Full actuator control + local display
-
----
-
-## 🚦 Actuator Response
-
-- **State 1 (OPTIMAL)**:  
-  Blue LED ON, fan/heater/vent/siren OFF
-- **State 2 (SUBOPTIMAL)**:  
-  Yellow LED ON, targeted cooling/heating/venting, siren OFF
-- **State 3 (POOR/DANGEROUS)**:  
-  Red LED ON, siren ON, maximum ventilation/control engaged
-
----
-
-## 💻 Software Setup
-
-### Requirements
-- Arduino IDE / PlatformIO
-- ESP32 board support
-- Libraries:
-  - `BlynkSimpleEsp32`
-  - `DHT sensor library`
-  - `LiquidCrystal_I2C`
-
-### Configuration
-Edit in the code:
-
-#define BLYNK_TEMPLATE_ID "TMPL6NkYtXFy4"
-
-#define BLYNK_TEMPLATE_NAME "POULTRY FARM MANAGEMENT SYSTEM"
-
-#define BLYNK_AUTH_TOKEN "YOUR_BLYNK_AUTH_TOKEN"
-
-
-char ssid[] = "YOUR_WIFI_SSID";
-
-char pass[] = "YOUR_WIFI_PASSWORD";
-
-
-
-### Upload
-1. Connect ESP32 via USB
-2. Select board: **ESP32 S3 WROOM**
-3. Upload code via Arduino IDE 
-
-
-## 🚀 Future Enhancements
-- Data logging to SD card
-- SMS & push notification integration
-- Manual actuator override from dashboard
-
----
-
-## 📜 License
-This project is open source and available under the [MIT License](LICENSE).
-
----
-
-
-
-
-
-
-
+- The current firmware uses Firebase and TinyML rather than the older Blynk design.
+- The dashboard expects the Firebase payload format produced by the ESP32 firmware.
+- The Wokwi simulation is available through the included diagram.json and wokwi-project.txt files.

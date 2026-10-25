@@ -24,8 +24,8 @@
 // FIREBASE CONFIGURATION
 // ============================================================
 
-#define FIREBASE_API_KEY      "AIzaSyB2cWXPm2ROHxdSdS2bQelDQSq832lj72M"
-#define FIREBASE_DATABASE_URL "https://poultry-farm-management-2abc5-default-rtdb.firebaseio.com"
+#define FIREBASE_API_KEY      "your api key"
+#define FIREBASE_DATABASE_URL "your database url"
 
 
 // ============================================================
@@ -75,6 +75,7 @@ const unsigned long FIREBASE_UPLOAD_INTERVAL = 60000;
 
 // Online/offline switch
 #define LIVE_UPDATE_REVIEW 12
+#define LIVE_UPDATE_ACTIVE LOW
 
 
 // LEDs
@@ -1719,7 +1720,7 @@ void setup() {
             LIVE_UPDATE_REVIEW
         )
         ==
-        HIGH
+        LIVE_UPDATE_ACTIVE
     ) {
 
         startWiFi();
@@ -1747,8 +1748,8 @@ void loop() {
         digitalRead(
             LIVE_UPDATE_REVIEW
         )
-        ==
-        HIGH;
+            ==
+            LIVE_UPDATE_ACTIVE;
 
 
     // ========================================================

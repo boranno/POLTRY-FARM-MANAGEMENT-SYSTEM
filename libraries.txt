@@ -1,8 +1,10 @@
-# Wokwi Library List
-# See https://docs.wokwi.com/guides/libraries
+# PFMS Arduino project library list
+# Required for the current ESP32 firmware in PFMS.ino
 
-# Automatically added based on includes:
 DHT sensor library
 LiquidCrystal I2C
-
-Blynk
+FirebaseClient
+WiFi
+WiFiClientSecure
+Arduino
+TensorFlow Lite for Microcontrollers

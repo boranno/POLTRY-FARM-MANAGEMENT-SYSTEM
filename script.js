@@ -49,19 +49,48 @@ function buildTelemetryCharts() {
   definitions.forEach(([id, datasets, yMax]) => buildChart(id, datasets.map((dataset) => ({ ...dataset, tension: .42, borderWidth: 2, pointRadius: 0 })), yMax));
 }
 
+function normalizeFarmStatus(status) {
+  if (status === undefined || status === null || status === '') return null;
+  const value = String(status).trim().toLowerCase();
+  if (value === '1' || value === 'optimal') return 'Optimal';
+  if (value === '2' || value === 'suboptimal') return 'Suboptimal';
+  if (value === '3' || value === 'dangerous' || value === 'poor' || value === 'poor_dangerous') return 'Dangerous';
+  if (value === 'danger') return 'Dangerous';
+  const exact = ['Optimal', 'Suboptimal', 'Dangerous'].find((label) => label.toLowerCase() === value);
+  return exact || null;
+}
+
+function calculateFarmStatus() {
+  const temp = state.temperature;
+  const humidity = state.humidity;
+  const ammonia = state.ammonia;
+
+  const tempDanger = temp < 15 || temp > 35;
+  const tempSuboptimal = (temp >= 15 && temp < 20) || (temp > 30 && temp <= 35);
+  const humidityDanger = humidity < 30 || humidity > 80;
+  const humiditySuboptimal = (humidity >= 30 && humidity < 50) || (humidity > 70 && humidity <= 80);
+  const ammoniaDanger = ammonia > 25;
+  const ammoniaSuboptimal = ammonia >= 10 && ammonia <= 25;
+
+  if (tempDanger || humidityDanger || ammoniaDanger) return 'Dangerous';
+  if (tempSuboptimal || humiditySuboptimal || ammoniaSuboptimal) return 'Suboptimal';
+  return 'Optimal';
+}
+
 function updateSensor(id, value) {
   $(`#${id}Value`).textContent = value.toFixed(1);
   const stateElement = $(`#${id}State`);
-  const safe = id === 'ammonia' ? value < 20 : id === 'humidity' ? value >= 50 && value <= 70 : value >= 20 && value <= 28;
+  const safe = id === 'ammonia'
+    ? value < 10
+    : id === 'humidity'
+      ? value >= 50 && value <= 70
+      : value >= 20 && value <= 30;
   stateElement.className = `state-pill ${safe ? 'good' : 'warning'}`;
   stateElement.innerHTML = `<i class="fa-solid ${safe ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i> ${safe ? (id === 'ammonia' ? 'Safe level' : 'Optimal range') : 'Needs attention'}`;
 }
 
 function classifyFarm(reportedStatus = '') {
-  const dangerous = state.ammonia >= 20 || state.temperature >= 32 || state.temperature <= 15;
-  const suboptimal = state.ammonia >= 12 || state.humidity >= 72 || state.humidity <= 42 || state.temperature >= 28;
-  const calculatedStatus = dangerous ? 'Dangerous' : suboptimal ? 'Suboptimal' : 'Optimal';
-  const status = ['Optimal', 'Suboptimal', 'Dangerous'].includes(reportedStatus) ? reportedStatus : calculatedStatus;
+  const status = normalizeFarmStatus(reportedStatus) || calculateFarmStatus();
   if (status === lastFarmStatus) return;
   lastFarmStatus = status;
   $('.status-dot').className = `status-dot ${status.toLowerCase()}`;
@@ -78,7 +107,8 @@ function applyReading(data, timestamp = new Date()) {
   state.temperature = numeric(data.temperature ?? data.temp, state.temperature);
   state.humidity = numeric(data.humidity ?? data.rh, state.humidity);
   state.ammonia = numeric(data.ammonia ?? data.nh3, state.ammonia);
-  updateSensor('temperature', state.temperature); updateSensor('humidity', state.humidity); updateSensor('ammonia', state.ammonia); classifyFarm(data.state);
+  updateSensor('temperature', state.temperature); updateSensor('humidity', state.humidity); updateSensor('ammonia', state.ammonia);
+  classifyFarm(normalizeFarmStatus(data.state) || data.state);
   const now = timestampValue(timestamp);
   $('#currentDate').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   $('#currentTime').textContent = formatTime(now); $('#checkedTime').textContent = formatTime(now);
@@ -107,7 +137,7 @@ async function subscribeToFirebase() {
           seenReadings.add(payloadKey);
           return true;
         });
-      state.readings = rows.slice(0, 8).map((row) => ({ timestamp: formatTime(timestampValue(row.timestamp)), temperature: numeric(row.temperature, state.temperature), humidity: numeric(row.humidity, state.humidity), ammonia: numeric(row.ammonia, state.ammonia), ai: row.state || 'Optimal' }));
+      state.readings = rows.slice(0, 8).map((row) => ({ timestamp: formatTime(timestampValue(row.timestamp)), temperature: numeric(row.temperature, state.temperature), humidity: numeric(row.humidity, state.humidity), ammonia: numeric(row.ammonia, state.ammonia), ai: normalizeFarmStatus(row.state) || 'Unknown' }));
       if (current) {
         const latestTimestamp = current.timestamp ? timestampValue(current.timestamp) : null;
         latestEsp32ReadingAt = latestTimestamp?.getTime() || 0;
