@@ -2,6 +2,7 @@
 #define ENABLE_DATABASE
 
 #include <Arduino.h>
+#include "secrets.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <time.h>
@@ -25,15 +26,16 @@
 // ============================================================
 
 #define FIREBASE_API_KEY      "your api key"
-#define FIREBASE_DATABASE_URL "your database url"
+#define FIREBASE_API_KEY      PFMS_FIREBASE_API_KEY
+#define FIREBASE_DATABASE_URL PFMS_FIREBASE_DATABASE_URL
 
 
 // ============================================================
 // WIFI
 // ============================================================
 
-#define WIFI_SSID     "PFMS"
-#define WIFI_PASSWORD "11111111"
+#define WIFI_SSID     PFMS_WIFI_SSID
+#define WIFI_PASSWORD PFMS_WIFI_PASSWORD
 
 
 // ============================================================

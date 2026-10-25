@@ -33,5 +33,6 @@ out/
 
 # Local secrets
 firebase-config.local.js
+PFMS/secrets.h
 .env
 .env.*

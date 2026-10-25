@@ -113,15 +113,9 @@ Example current payload:
 
 ### Configure credentials
 
-Edit the values in the firmware before upload:
+Create `PFMS/secrets.h` by copying `PFMS/secrets.example.h`, then replace the placeholder values with your own Firebase and WiFi settings. `PFMS/secrets.h` is ignored by Git and should not be committed.
 
-```cpp
-#define FIREBASE_API_KEY      "your api key"
-#define FIREBASE_DATABASE_URL "your database url"
-
-#define WIFI_SSID     "your wifi ssid"
-#define WIFI_PASSWORD "your wifi password"
-```
+The website uses the separate `firebase-config.js` file. Replace its placeholder Firebase web-app configuration with your project's web configuration. Configure Firebase Anonymous Authentication and Realtime Database rules for your project before connecting the device or dashboard. Firebase web API keys are not authorization by themselves; database rules must protect access.
 
 ## Build and upload
 
